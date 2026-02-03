@@ -17,7 +17,8 @@ env:
   CONFIG_FILE: "config/xg-040g-md.config"
   # REPO_URL: https://github.com/immortalwrt/immortalwrt.git
   REPO_URL: https://github.com/openwrt/openwrt.git
-  REPO_BRANCH: main
+  REPO_BRANCH: openwrt-25.12
+  FEEDS_CONF: feeds.conf.default
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
@@ -98,9 +99,7 @@ jobs:
       - name: Update & Install feeds
         working-directory: ./openwrt
         run: |
-          sed -i '/routing/d' feeds.conf.default
-          sed -i '/telephony/d' feeds.conf.default
-          sed -i '/video/d' feeds.conf.default
+          [ -e ../$FEEDS_CONF ] && mv ../$FEEDS_CONF ./feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a -f
 
