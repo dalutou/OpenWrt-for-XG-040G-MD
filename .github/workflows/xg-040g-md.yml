@@ -5,11 +5,10 @@ permissions:
   actions: write
 
 on:
-  repository_dispatch:
   workflow_dispatch:
     inputs:
       log_switch:
-        description: "编译日志开关"
+        description: "Build logs"
         required: false
         default: false
         type: boolean
@@ -18,7 +17,7 @@ env:
   CONFIG_FILE: "config/xg-040g-md.config"
   # REPO_URL: https://github.com/immortalwrt/immortalwrt.git
   REPO_URL: https://github.com/openwrt/openwrt.git
-  REPO_BRANCH: openwrt-25.12
+  REPO_BRANCH: main
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
@@ -110,7 +109,7 @@ jobs:
           cp -fv "${CONFIG_FILE}" openwrt/.config
           cd openwrt && make defconfig
 
-      - name: 自动上传编译配置
+      - name: Upload build configs
         uses: actions/upload-artifact@v4
         with:
           name: build-config
@@ -163,7 +162,7 @@ jobs:
           cat <<EOF > release.txt
           🚀 OpenWrt firmware for XG-040G-MD
           ----------------------
-          设备型号: NOKIA BELL XG-040G-MD
+          设备型号: XG-040G-MD
           构建时间: $(date +"%Y-%m-%d %H:%M")
           内核版本: 6.12.X
           源码仓库: $REPO_URL
