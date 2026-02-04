@@ -73,6 +73,13 @@ jobs:
           echo "::set-output name=status::success"
           fi
 
+      - name: Apply BELL XG-040G-MD patch
+        working-directory: ./openwrt
+        run: |
+          [ -e ../patch/02_network ] && mv ../patch/02_network ./target/linux/airoha/an7581/base-files/etc/board.d/02_network
+          [ -e ../patch/an7581.mk ] && mv ../patch/an7581.mk ./target/linux/airoha/dts/an7581-bell_xg-040g-md.dts
+          [ -e ../patch/an7581-bell_xg-040g-md.dts ] && mv ../patch/an7581-bell_xg-040g-md.dts ./target/linux/airoha/image/an7581.mk
+
       - name: Free up disk space
         run: |
           sudo mkdir -p /mnt/openwrt/{dl,staging_dir,build_dir}
