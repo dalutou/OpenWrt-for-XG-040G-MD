@@ -26,9 +26,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -euo pipefail
 
     steps:
       - name: Checkout
