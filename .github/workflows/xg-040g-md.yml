@@ -26,75 +26,70 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -euo pipefail
 
     steps:
       - name: Checkout
         uses: actions/checkout@main
 
-      - name: Initialization environment
-        id: init
+      - name: Setup environment dependencies
         env:
           DEBIAN_FRONTEND: noninteractive
+          TZ: ${{ env.TZ }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-          build-essential clang flex bison g++ gawk gettext \
-          git libncurses-dev libssl-dev python3-dev python3-setuptools \
-          python3-pyelftools swig rsync unzip zlib1g-dev file wget \
-          bc libelf-dev qemu-utils mkbootimg device-tree-compiler
-          # 验证安装
-          mkbootimg --help || true
-          MKBOOTIMG_PATH=$(which mkbootimg)
-          if [ -n "$MKBOOTIMG_PATH" ]; then
-          echo "mkbootimg found at: $MKBOOTIMG_PATH"
-          file "$MKBOOTIMG_PATH"
+          sudo apt update
+          sudo apt install -y \
+            build-essential clang flex bison g++ gawk gettext \
+            git libncurses-dev libssl-dev python3-dev python3-setuptools \
+            python3-pip python3-pyelftools swig rsync unzip zlib1g-dev file wget \
+            bc libelf-dev qemu-utils mkbootimg device-tree-compiler
+
+          if command -v mkbootimg >/dev/null 2>&1; then
+            echo "mkbootimg found at: $(command -v mkbootimg)"
           else
-          echo "❌ mkbootimg not found in PATH!"
+            echo "❌ mkbootimg not found in PATH!"
           fi
 
-          sudo timedatectl set-timezone "${TZ}"
-          echo "status=success" >> ${GITHUB_OUTPUT}
+          if [[ -n "$TZ" ]]; then
+            sudo timedatectl set-timezone "$TZ"
+          else
+            echo "TZ is not set, skipping timezone setup."
+          fi
 
       - name: Ensure Python build tools
         run: |
           python3 -m pip install --upgrade pip setuptools wheel
-          python3 -m pip --version
-          python3 -c "import setuptools.build_meta; print('setuptools.build_meta OK')"
           python3 -m pip install Unidecode
 
-      - name: Clone source code
-        id: codes
-        if: steps.init.outputs.status == 'success' && success()
+      - name: Clone OpenWrt source code
         run: |
-          git clone --depth 1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
-          if [ -n "$GITHUB_OUTPUT" ]; then
-          echo "status=success" >> "$GITHUB_OUTPUT"
-          else
-          echo "::set-output name=status::success"
-          fi
+          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
 
-      - name: Apply BELL XG-040G-MD patch
+      - name: Apply BELL XG-040G-MD patch files
         working-directory: ./openwrt
         run: |
           [ -e ../patch/02_network ] && mv ../patch/02_network ./target/linux/airoha/an7581/base-files/etc/board.d/02_network
           [ -e ../patch/an7581.mk ] && mv ../patch/an7581.mk ./target/linux/airoha/image/an7581.mk
           [ -e ../patch/an7581-bell_xg-040g-md.dts ] && mv ../patch/an7581-bell_xg-040g-md.dts ./target/linux/airoha/dts/an7581-bell_xg-040g-md.dts
 
-      - name: Free up disk space
+      - name: Setup persistent cache directories (optional)
         run: |
           sudo mkdir -p /mnt/openwrt/{dl,staging_dir,build_dir}
           sudo chown -R $USER:$GROUPS /mnt/openwrt
           ln -sfn /mnt/openwrt/dl openwrt/dl
           ln -sfn /mnt/openwrt/staging_dir openwrt/staging_dir
           ln -sfn /mnt/openwrt/build_dir openwrt/build_dir
-          df -H
+          df -h
 
       - name: Update & Install feeds
         working-directory: ./openwrt
         run: |
-          [ -e ../$FEEDS_CONF ] && mv ../$FEEDS_CONF ./feeds.conf.default
+          if [ -e ../$FEEDS_CONF ]; then
+            mv ../$FEEDS_CONF ./feeds.conf.default
+          fi
           ./scripts/feeds update -a
-          # ./scripts/feeds install -a -f
           ./scripts/feeds install \
             airoha-en7581-npu-firmware \
             apk \
@@ -121,65 +116,65 @@ jobs:
             ubi-utils \
             urandom-seed \
             urngd \
-            usign 、
+            usign \
             luci \
             luci-base \
             luci-mod-admin-full \
             luci-ssl
 
-      - name: Configuration Customization
+      - name: Copy configuration and defconfig
         run: |
           cp -fv "${CONFIG_FILE}" openwrt/.config
           cd openwrt && make defconfig
 
-      - name: Upload build configs
-        uses: actions/upload-artifact@v4
+      - name: Upload build config files
+        uses: actions/upload-artifact@v3
         with:
           name: build-config
           path: |
             openwrt/.config
             openwrt/feeds.conf.default
 
-      - name: Download package
+      - name: Download packages
         working-directory: ./openwrt
         run: |
           make download -j4 V=s
+          # Remove small incomplete files <1KB
           find dl -size -1024c -delete
 
-      - name: Compile the OpenWrt
+      - name: Compile OpenWrt firmware
         id: compile
         run: |
-          cd openwrt/
-          make defconfig
+          cd openwrt
           if [[ "${{ inputs.log_switch }}" == "true" ]]; then
-              make -j1 V=s
+            make -j1 V=s
           else
-              make -j$(nproc)
+            make -j$(nproc)
           fi
-          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-          [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+          DEVICE_NAME=$(grep -Po '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/')
+          if [[ -n "$DEVICE_NAME" ]]; then
+            echo "DEVICE_NAME=_${DEVICE_NAME}" >> $GITHUB_ENV
+          fi
           echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-          echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: Organize files
+      - name: Prepare firmware artifacts path
         id: organize
-        if: env.UPLOAD_FIRMWARE == 'true' && steps.compile.outputs.status == 'success'
+        if: env.UPLOAD_FIRMWARE == 'true'
         run: |
           cd openwrt/bin/targets/*/*
           rm -rf packages
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-          echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: Upload firmware directory
-        uses: actions/upload-artifact@main
-        if: steps.organize.outputs.status == 'success' && !cancelled()
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v3
+        if: env.UPLOAD_FIRMWARE == 'true'
         with:
           name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}/*
 
-      - name: Generate release tag
+      - name: Generate release tag and notes
         id: tag
-        if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success'
+        if: env.UPLOAD_RELEASE == 'true'
         run: |
           echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
           cat <<EOF > release.txt
@@ -191,10 +186,10 @@ jobs:
           源码仓库: $REPO_URL
           分支: $REPO_BRANCH
           EOF
-          echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Publish GitHub Release
         uses: ncipollo/release-action@v1
+        if: env.UPLOAD_RELEASE == 'true'
         with:
           tag: ${{ steps.tag.outputs.release_tag }}
           bodyFile: release.txt
