@@ -77,7 +77,7 @@ jobs:
         working-directory: ./openwrt
         run: |
           [ -e ../patch/02_network ] && mv ../patch/02_network ./target/linux/airoha/an7581/base-files/etc/board.d/02_network
-          [ -e ../patch/an7581.mk ] && mv ../patch/an7581.mk ./target/linux/airoha/image/an7581.mk ./target/linux/airoha/image/an7581.mk
+          [ -e ../patch/an7581.mk ] && mv ../patch/an7581.mk ./target/linux/airoha/image/an7581.mk
           [ -e ../patch/an7581-bell_xg-040g-md.dts ] && mv ../patch/an7581-bell_xg-040g-md.dts ./target/linux/airoha/dts/an7581-bell_xg-040g-md.dts
 
       - name: Free up disk space
