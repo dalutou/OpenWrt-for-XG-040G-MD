@@ -1,0 +1,198 @@
+name: Build_XG_040G_MD
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      log_switch:
+        description: "Build logs"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  CONFIG_FILE: "config/xg-040g-md.config"
+  # REPO_URL: https://github.com/immortalwrt/immortalwrt.git
+  REPO_URL: https://github.com/openwrt/openwrt.git
+  REPO_BRANCH: openwrt-25.12
+  FEEDS_CONF: feeds.conf.default
+  UPLOAD_FIRMWARE: true
+  UPLOAD_RELEASE: true
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup environment dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TZ: ${{ env.TZ }}
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
+            python3-setuptools rsync swig unzip zlib1g-dev file wget \
+            mkbootimg device-tree-compiler
+
+          if command -v mkbootimg >/dev/null 2>&1; then
+            echo "mkbootimg found at: $(command -v mkbootimg)"
+          else
+            echo "❌ mkbootimg not found in PATH!"
+          fi
+
+          if [[ -n "$TZ" ]]; then
+            sudo timedatectl set-timezone "$TZ"
+          else
+            echo "TZ is not set, skipping timezone setup."
+          fi
+
+      - name: Ensure Python build tools
+        run: |
+          python3 -m pip install --upgrade pip setuptools wheel
+          python3 -m pip install Unidecode
+
+      - name: Clone OpenWrt source code
+        run: |
+          git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
+
+      - name: Apply BELL XG-040G-MD patch files
+        working-directory: ./openwrt
+        run: |
+          [ -e ../patch/02_network ] && cp -f ../patch/02_network ./target/linux/airoha/an7581/base-files/etc/board.d/02_network
+          [ -e ../patch/an7581.mk ] && cp -f ../patch/an7581.mk ./target/linux/airoha/image/an7581.mk
+          [ -e ../patch/an7581-bell_xg-040g-md.dts ] && cp -f ../patch/an7581-bell_xg-040g-md.dts ./target/linux/airoha/dts/an7581-bell_xg-040g-md.dts
+
+      - name: Update & Install feeds
+        working-directory: ./openwrt
+        run: |
+          if [ -e ../$FEEDS_CONF ]; then
+            cp -f ../$FEEDS_CONF ./feeds.conf.default
+          fi
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a -f
+          # ./scripts/feeds install \
+          #   airoha-en7581-npu-firmware \
+          #   apk \
+          #   dnsmasq \
+          #   dropbear \
+          #   firewall4 \
+          #   fstools \
+          #   ip-full \
+          #   kmod-gpio-button-hotplug \
+          #   kmod-i2c-an7581 \
+          #   kmod-leds-gpio \
+          #   kmod-phy-airoha-en8811h \
+          #   logd \
+          #   mtd \
+          #   netifd \
+          #   odhcp6c \
+          #   odhcpd-ipv6only \
+          #   ppp \
+          #   ppp-mod-pppoe \
+          #   procd \
+          #   uci \
+          #   uclient-fetch \
+          #   uboot-envtools \
+          #   ubi-utils \
+          #   urandom-seed \
+          #   urngd \
+          #   usign \
+          #   umdns \
+          #   luci \
+          #   luci-base \
+          #   luci-mod-admin-full \
+          #   luci-ssl
+
+      - name: Copy configuration and defconfig
+        run: |
+          cp -fv "${CONFIG_FILE}" openwrt/.config
+          cd openwrt && make defconfig
+
+      - name: Upload build config files
+        uses: actions/upload-artifact@v6
+        with:
+          name: build-config
+          path: |
+            config/xg-040g-md.config
+            openwrt/feeds.conf.default
+
+      - name: Download packages
+        working-directory: ./openwrt
+        run: |
+          make download -j4 V=s
+          # Remove small incomplete files <1KB
+          find dl -size -1024c -delete
+
+      - name: Compile OpenWrt firmware
+        id: compile
+        run: |
+          cd openwrt
+          if [[ "${{ inputs.log_switch }}" == "true" ]]; then
+            make -j1 V=s
+          else
+            make -j$(nproc)
+          fi
+          DEVICE_NAME=$(grep -o 'CONFIG_TARGET.*DEVICE_[^=]*=y' .config | head -1 | sed 's/.*DEVICE_\(.*\)=y/\1/')
+          if [[ -n "$DEVICE_NAME" ]]; then
+            echo "DEVICE_NAME=_${DEVICE_NAME}" >> $GITHUB_ENV
+          fi
+          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Prepare firmware artifacts path
+        id: organize
+        if: env.UPLOAD_FIRMWARE == 'true'
+        run: |
+          cd openwrt/bin/targets/*/*
+          rm -rf packages
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v6
+        if: env.UPLOAD_FIRMWARE == 'true'
+        with:
+          name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          path: ${{ env.FIRMWARE }}/*
+
+      - name: Generate release tag and notes
+        id: tag
+        if: env.UPLOAD_RELEASE == 'true'
+        run: |
+          echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+          cat <<EOF > release.txt
+          🚀 OpenWrt firmware for XG-040G-MD
+          ----------------------
+          设备型号: XG-040G-MD
+          构建时间: $(date +"%Y-%m-%d %H:%M")
+          内核版本: 6.12.X
+          源码仓库: $REPO_URL
+          分支: $REPO_BRANCH
+          EOF
+
+      - name: Publish GitHub Release
+        uses: ncipollo/release-action@v1
+        if: env.UPLOAD_RELEASE == 'true'
+        with:
+          tag: ${{ steps.tag.outputs.release_tag }}
+          bodyFile: release.txt
+          artifacts: |
+            ${{ env.FIRMWARE }}/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          retain_days: 7
+          keep_minimum_runs: 5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,60 @@
+name: OpenWrt XG-040G-MD Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: "Extra packages"
+        required: false
+        default: "luci-ssl umdns kmod-mtd-rw"
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download ImageBuilder
+      uses: actions/download-artifact@v4
+      with:
+        name: imagebuilder
+        path: .
+
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: packages
+        path: packages
+
+    - name: Extract ImageBuilder
+      run: |
+        tar -xf openwrt-imagebuilder-*-mediatek-filogic*.tar.*
+        mv openwrt-imagebuilder-* imagebuilder
+
+    - name: Configure local apk repo
+      run: |
+        cd imagebuilder
+        cat > repositories.conf <<EOF
+        src/gz local_base file://$GITHUB_WORKSPACE/packages/aarch64_cortex-a53/base
+        src/gz local_luci file://$GITHUB_WORKSPACE/packages/aarch64_cortex-a53/luci
+        EOF
+
+    - name: Build image (XG-040G-MD)
+      run: |
+        cd imagebuilder
+        make image \
+          PROFILE=nokia_xg-040g-md \
+          PACKAGES="\
+            -ppp -ppp-mod-pppoe \
+            ${{ github.event.inputs.packages }} \
+          " \
+          FILES=../files
+
+    - name: Upload firmware
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware
+        path: |
+          imagebuilder/bin/targets/mediatek/filogic/*.bin
