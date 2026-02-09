@@ -18,7 +18,7 @@ env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt.git
   # REPO_URL: https://github.com/openwrt/openwrt.git
   REPO_BRANCH: openwrt-25.12
-  FEEDS_CONF: feeds.conf.default-immortalwrt
+  FEEDS_CONF: feeds.conf.default-25.12
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
