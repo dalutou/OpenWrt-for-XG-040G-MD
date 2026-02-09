@@ -17,8 +17,8 @@ env:
   CONFIG_FILE: "config/xg-040g-md.config"
   # REPO_URL: https://github.com/immortalwrt/immortalwrt.git
   REPO_URL: https://github.com/openwrt/openwrt.git
-  REPO_BRANCH: main
-  FEEDS_CONF: feeds.conf.default-openwrt
+  REPO_BRANCH: openwrt-25.12
+  FEEDS_CONF: feeds.conf.default-25.12
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
