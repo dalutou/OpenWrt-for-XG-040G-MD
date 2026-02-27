@@ -68,9 +68,10 @@ jobs:
           [ -e patch/02_network ] && cp -f patch/02_network openwrt/target/linux/airoha/an7581/base-files/etc/board.d/02_network
           [ -e patch/an7581.mk ] && cp -f patch/an7581.mk openwrt/target/linux/airoha/image/an7581.mk
           [ -e patch/an7581-bell_xg-040g-md.dts ] && cp -f patch/an7581-bell_xg-040g-md.dts openwrt/target/linux/airoha/dts/an7581-bell_xg-040g-md.dts
-          #[ -e patch/config-6.12 ] && cp -f patch/config-6.12 openwrt/target/linux/airoha/an7581/config-6.12
-          #[ -e patch/target.mk ] && cp -f patch/target.mk openwrt/target/linux/airoha/an7581/target.mk
-          [ -e patch/netdevices.mk ] && cp -f patch/netdevices.mk openwrt/package/kernel/linux/modules/netdevices.mk
+          # [ -e patch/config-6.12 ] && cp -f patch/config-6.12 openwrt/target/linux/airoha/an7581/config-6.12
+          # [ -e patch/target.mk ] && cp -f patch/target.mk openwrt/target/linux/airoha/an7581/target.mk
+          # [ -e patch/netdevices.mk ] && cp -f patch/netdevices.mk openwrt/package/kernel/linux/modules/netdevices.mk
+          [ -e patch/342-mtd-spinand-Support-fmsh.patch ] && cp -f patch/342-mtd-spinand-Support-fmsh.patch openwrt/package/boot/uboot-mediatek/patches/342-mtd-spinand-Support-fmsh.patch
           [ -e patch/400-mtd-spinand-Support-fmsh.patch ] && cp -f patch/400-mtd-spinand-Support-fmsh.patch openwrt/target/linux/generic/hack-6.12/400-mtd-spinand-Support-fmsh.patch
 
       - name: Update & Install feeds
