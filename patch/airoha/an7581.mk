@@ -153,9 +153,10 @@ define Device/nokia_xg-040g-md
   DEVICE_DTS_CONFIG := config@1
   IMAGE_SIZE := 131968k
   KERNEL_SIZE := 8192k
-  IMAGES += factory-kernel.bin factory-rootfs.bin
+  IMAGES += factory-kernel.bin factory-rootfs.bin factory.bin
   IMAGE/factory-kernel.bin := append-kernel
   IMAGE/factory-rootfs.bin := append-ubi | check-size
+  IMAGE/factory.bin := append-kernel | append-ubi | check-size
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
 endef
 TARGET_DEVICES += nokia_xg-040g-md
