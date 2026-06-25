@@ -66,14 +66,11 @@ jobs:
         run: |
           git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
           cd patch
-          [ -e airoha/01_leds ] && cp -f airoha/01_leds ../openwrt/target/linux/airoha/an7581/base-files/etc/board.d/01_leds
-          [ -e airoha/02_network ] && cp -f airoha/02_network ../openwrt/target/linux/airoha/an7581/base-files/etc/board.d/02_network
           [ -e airoha/an7581.mk ] && cp -f airoha/an7581.mk ../openwrt/target/linux/airoha/image/an7581.mk
+          [ -e airoha/an7581-nokia_xg-040g-md-common.dtsi ] && cp -f airoha/an7581-nokia_xg-040g-md-common.dtsi ../openwrt/target/linux/airoha/dts/an7581-nokia_xg-040g-md-common.dtsi
           [ -e airoha/an7581-nokia_xg-040g-md.dts ] && cp -f airoha/an7581-nokia_xg-040g-md.dts ../openwrt/target/linux/airoha/dts/an7581-nokia_xg-040g-md.dts
-          [ -e 342-mtd-spinand-Support-fmsh.patch ] && cp -f 342-mtd-spinand-Support-fmsh.patch ../openwrt/package/boot/uboot-mediatek/patches/342-mtd-spinand-Support-fmsh.patch
-          # [ -d "airoha/patches-6.12" ] && cp -f airoha/patches-6.12/*.patch ../openwrt/target/linux/airoha/patches-6.12/
-          #[ -d "generic/pending-6.18" ] && cp -f generic/pending-6.18/*.patch ../openwrt/target/linux/generic/pending-6.18/
-          [ -d "generic/hack-6.18" ] && cp -f generic/hack-6.18/*.patch ../openwrt/target/linux/generic/hack-6.18/
+          [ -e airoha/an7581-nokia_xg-040g-md-ubi.dts ] && cp -f airoha/an7581-nokia_xg-040g-md-ubi.dts ../openwrt/target/linux/airoha/dts/an7581-nokia_xg-040g-md-ubi.dts
+          # [ -d "airoha/patches-6.18" ] && cp -f airoha/patches-6.12/*.patch ../openwrt/target/linux/airoha/patches-6.18/
 
 
       - name: Update & Install feeds

@@ -97,10 +97,13 @@ define Device/gemtek_w1700k-ubi
   DEVICE_ALT2_MODEL := W1700K
   DEVICE_ALT2_VARIANT := UBI
   DEVICE_DTS := an7581-w1700k-ubi
-  DEVICE_PACKAGES := airoha-en7581-mt7996-npu-firmware \
-		    fitblk kmod-i2c-an7581 kmod-hwmon-nct7802 \
-		    kmod-mt7996-firmware kmod-phy-rtl8261n \
-		    wpad-basic-mbedtls
+  DEVICE_COMPAT_VERSION := 2.0
+  DEVICE_COMPAT_MESSAGE := Partition table has been changed to cooperate \
+       with the vendor bootloader with regard to the BMT/BBT partition at \
+       the end of flash. A reinstall including corrected chainloader is needed.
+  DEVICE_PACKAGES := airoha-en7581-mt7996-npu-firmware fitblk kmod-i2c-an7581 \
+		    kmod-hwmon-nct7802 kmod-mt7996-firmware wpad-basic-mbedtls \
+		    rtl8261n-firmware
   UBINIZE_OPTS := -E 5
   BLOCKSIZE := 128k
   PAGESIZE := 2048
@@ -132,22 +135,48 @@ define Device/nokia_valyrian
 endef
 TARGET_DEVICES += nokia_valyrian
 
-define Device/nokia_xg-040g-md
+define Device/nokia_xg-040g-md-common
   $(call Device/FitImageLzma)
   DEVICE_VENDOR := Nokia
-  DEVICE_MODEL := Bell XG-040G-MD
-  DEVICE_DTS := an7581-nokia_xg-040g-md
-  SOC := an7581
-  KERNEL_LOADADDR := 0x80088000
+  DEVICE_MODEL := XG-040G-MD
   BLOCKSIZE := 128k
   PAGESIZE := 2048
+  UBINIZE_OPTS := -E 5
+  DEVICE_PACKAGES := kmod-gpio-button-hotplug kmod-leds-gpio \
+	kmod-phy-airoha-en8811h kmod-regulator-userspace-consumer \
+	kmod-usb-ledtrig-usbport kmod-usb3
+endef
+
+define Device/nokia_xg-040g-md
+  $(call Device/nokia_xg-040g-md-common)
+  DEVICE_DTS := an7581-nokia_xg-040g-md
+  DEVICE_DTS_CONFIG := config@1
+  IMAGE_SIZE := 131968k
   KERNEL_SIZE := 8192k
-  IMAGE_SIZE := 261120k
-  KERNEL_IN_UBI := 1
-  UBINIZE_OPTS := -s 2048
-  IMAGES := factory.bin sysupgrade.bin
-  IMAGE/factory.bin := append-kernel | pad-to $$$$(KERNEL_SIZE) | append-ubi
+  IMAGES += factory-kernel.bin factory-rootfs.bin
+  IMAGE/factory-kernel.bin := append-kernel
+  IMAGE/factory-rootfs.bin := append-ubi | check-size
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
-  DEVICE_PACKAGES := kmod-phy-airoha-en8811h kmod-i2c-an7581 kmod-leds-gpio kmod-gpio-button-hotplug uboot-envtools ubi-utils kmod-usb2 kmod-usb3 kmod-usb-storage-uas
 endef
 TARGET_DEVICES += nokia_xg-040g-md
+
+define Device/nokia_xg-040g-md-ubi
+  $(call Device/nokia_xg-040g-md-common)
+  DEVICE_VARIANT := (UBI)
+  DEVICE_DTS := an7581-nokia_xg-040g-md-ubi
+  UBOOTENV_IN_UBI := 1
+  KERNEL_IN_UBI := 1
+  KERNEL := kernel-bin | gzip
+  KERNEL_INITRAMFS := kernel-bin | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb with-initrd | pad-to 128k
+  KERNEL_INITRAMFS_SUFFIX := -recovery.itb
+  IMAGES := sysupgrade.itb
+  IMAGE/sysupgrade.itb := append-kernel | \
+	fit gzip $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb external-static-with-rootfs | \
+	append-metadata
+  DEVICE_PACKAGES += fitblk
+  ARTIFACT/bl31-uboot.fip := an7581-bl31-uboot nokia_xg-040g-md
+  ARTIFACT/preloader.bin := an7581-preloader nokia_xg-040g-md
+  ARTIFACTS := bl31-uboot.fip preloader.bin
+endef
+TARGET_DEVICES += nokia_xg-040g-md-ubi
