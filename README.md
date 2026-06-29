@@ -5,7 +5,7 @@ OpenWrt firmware for NOKIA BELL XG-040G-MD
 编译脚本基于 [Actions-OpenWrt](https://github.com/xuxin1955/Actions-OpenWrt) 修改。
 
 * 固件使用 OpenWrt main 分支构建，包含 luci，不包含中文语言包及其他不必要的包，与其他常见的官方 image 类似，尽可能保持小体积。
-* 使用 tcboot.bin 作为引导程序。
+* 刷机方法见 [这里](https://github.com/openwrt/openwrt/commit/a6ecb09985fa7c14bae1c1bad7d42495737bc0ba) , 之前使用 tcboot.bin 作为引导的，需要恢复光猫原厂固件后，再按教程操作。
 * main 分支变化频繁，固件刷入后，有一定几率无法成功启动。
 * **请准备好 USB-TTL，做好随时救砖的准备**。
 
