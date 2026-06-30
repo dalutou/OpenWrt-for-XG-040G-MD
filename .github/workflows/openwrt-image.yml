@@ -30,7 +30,7 @@ jobs:
 
     - name: Extract ImageBuilder
       run: |
-        tar -xf openwrt-imagebuilder-*-mediatek-filogic*.tar.*
+        tar -xf openwrt-imagebuilder-*-airoha-an7581*.tar.*
         mv openwrt-imagebuilder-* imagebuilder
 
     - name: Configure local apk repo
@@ -39,6 +39,7 @@ jobs:
         cat > repositories.conf <<EOF
         src/gz local_base file://$GITHUB_WORKSPACE/packages/aarch64_cortex-a53/base
         src/gz local_luci file://$GITHUB_WORKSPACE/packages/aarch64_cortex-a53/luci
+        src/gz local_packages file://$GITHUB_WORKSPACE/packages/aarch64_cortex-a53/packages
         EOF
 
     - name: Build image (XG-040G-MD)
@@ -57,4 +58,4 @@ jobs:
       with:
         name: firmware
         path: |
-          imagebuilder/bin/targets/mediatek/filogic/*.bin
+          imagebuilder/bin/targets/airoha/an7581/*.bin

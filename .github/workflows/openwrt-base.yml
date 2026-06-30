@@ -24,14 +24,14 @@ jobs:
 
     - name: Clone OpenWrt
       run: |
-        git clone --depth 1 https://github.com/openwrt/openwrt.git -b openwrt-25.12 openwrt
+        git clone --depth 1 https://github.com/openwrt/openwrt.git -b main openwrt
 
-    - name: Feeds (minimal)
+    - name: Update & Install feeds
       run: |
         cd openwrt
-        ./scripts/feeds update base luci
-        ./scripts/feeds install -a -p base
-        ./scripts/feeds install -a -p luci
+        cp ../feeds.conf.default-main feeds.conf.default
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a -f
 
     - name: Load config
       run: |
@@ -46,7 +46,7 @@ jobs:
           openwrt/build_dir
           openwrt/staging_dir
           openwrt/.ccache
-        key: openwrt-${{ hashFiles('config/openwrt.config') }}
+        key: openwrt-${{ hashFiles('config/xg-040g-md.config', 'feeds.conf.default-main') }}
 
     - name: Build OpenWrt (kernel + packages)
       run: |
@@ -58,7 +58,7 @@ jobs:
       with:
         name: imagebuilder
         path: |
-          openwrt/bin/targets/mediatek/filogic/*imagebuilder*.tar.*
+          openwrt/bin/targets/airoha/an7581/*imagebuilder*.tar.*
 
     - name: Upload packages
       uses: actions/upload-artifact@v4
