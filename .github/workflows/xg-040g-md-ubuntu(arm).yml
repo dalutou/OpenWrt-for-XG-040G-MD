@@ -65,7 +65,8 @@ jobs:
       - name: Clone OpenWrt source code and apply XG-040G-MD patch files
         run: |
           git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" openwrt
-          # cd patch
+          cd patch
+          [ -d "uboot-airoha" ] && cp -f uboot-airoha/*.patch ../openwrt/package/boot/uboot-airoha/patches/
           # [ -e airoha/an7581.mk ] && cp -f airoha/an7581.mk ../openwrt/target/linux/airoha/image/an7581.mk
           # [ -d "airoha/patches-6.18" ] && cp -f airoha/patches-6.12/*.patch ../openwrt/target/linux/airoha/patches-6.18/
 
